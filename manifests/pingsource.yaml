@@ -1,0 +1,14 @@
+apiVersion: sources.knative.dev/v1
+kind: PingSource
+metadata:
+  name: heartbeat
+  namespace: default
+spec:
+  schedule: "*/1 * * * *"   # every minute (cron); demo also uses a manual curl for instant events
+  contentType: application/json
+  data: '{"message": "hello from PingSource"}'
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default

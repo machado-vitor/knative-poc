@@ -1,0 +1,16 @@
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: hello-on-ping
+  namespace: default
+spec:
+  broker: default
+  # Filter: only route PingSource events to the hello service.
+  filter:
+    attributes:
+      type: dev.knative.sources.ping
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: hello
