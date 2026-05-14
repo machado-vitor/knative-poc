@@ -145,6 +145,20 @@ event consumer, with zero code changes.
 > 2. The Eventing primitives — Broker, Trigger, Source — are simple, composable,
 >    and CloudEvents-native, so any HTTP service is automatically an event sink."
 
+## Tests
+
+```sh
+# Unit tests (no cluster needed) — run via Docker since the host doesn't need Go:
+docker run --rm -v "$PWD/app":/src -w /src golang:1.22-alpine go test ./...
+
+# Integration smoke test — assumes ./scripts/deploy.sh has run.
+./scripts/smoke.sh
+```
+
+`smoke.sh` does an end-to-end check: port-forwards Kourier, hits the service,
+posts a CloudEvent to the broker, and verifies the event-id appears in the
+service's logs within 15 seconds.
+
 ## Tear down
 
 ```sh
