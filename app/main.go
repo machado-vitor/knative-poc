@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -19,15 +23,36 @@ func main() {
 		port = "8080"
 	}
 
-	http.HandleFunc("/", handle)
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handle)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	log.Printf("listening on :%s (revision=%s, pod=%s)", port, revision(), hostname())
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatal(err)
+	srv := &http.Server{Addr: ":" + port, Handler: mux}
+
+	// Knative sends SIGTERM when it scales the pod down (including scale-to-zero).
+	// Catch it and drain in-flight requests instead of dropping connections.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	go func() {
+		log.Printf("listening on :%s (revision=%s, pod=%s)", port, revision(), hostname())
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop() // stop catching signals so a second one force-quits
+
+	log.Printf("shutdown signal received, draining in-flight requests...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("graceful shutdown failed: %v", err)
 	}
+	log.Printf("shutdown complete")
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
