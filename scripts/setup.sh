@@ -70,6 +70,14 @@ kubectl patch configmap config-domain -n knative-serving \
   --type merge \
   --patch '{"data":{"127.0.0.1.sslip.io":""}}'
 
+log "Tuning the autoscaler for a snappy demo: scale to zero in ~10s instead of ~90s..."
+# scale-to-zero-grace-period is global-only (no per-revision annotation). The
+# matching per-revision settings (window / scale-down-delay / timeoutSeconds)
+# live on the Knative Service in manifests/service.yaml.
+kubectl patch configmap config-autoscaler -n knative-serving \
+  --type merge \
+  --patch '{"data":{"scale-to-zero-grace-period":"6s"}}'
+
 # --- 4. Knative Eventing ----------------------------------------------------
 log "Installing Knative Eventing CRDs..."
 kubectl apply -f "https://github.com/knative/eventing/releases/download/knative-${KNATIVE_VERSION}/eventing-crds.yaml"

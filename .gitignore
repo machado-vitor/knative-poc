@@ -1,0 +1,9 @@
+# Rendered slide images for the presenter teleprompter (derived from the PDF).
+.slides/
+
+# Demo session runtime state (tmux driver pane id, etc.)
+.demo/
+
+# Editor / OS noise
+.idea/
+.DS_Store

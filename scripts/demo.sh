@@ -39,8 +39,42 @@ case "$cmd" in
     ;;
 
   pods)
-    # Side terminal during the talk: shows scale-up / scale-down live.
-    kubectl get pods -l serving.knative.dev/service=hello -w
+    # Side terminal during the talk: a live, auto-refreshing snapshot of the
+    # current replica count. Unlike `kubectl get -w` (which appends every state
+    # transition until the pane is an unreadable wall of Terminating/Completed),
+    # this clears each tick and shows only what's alive right now, with a bar.
+    # NOTE: the loop runs with `set +e` — under the script's `set -euo pipefail`,
+    # commands that legitimately return non-zero (grep with no match, a false
+    # `[ ]` test) would otherwise kill the whole loop the moment pods hit zero.
+    set +e
+    if [ -t 1 ]; then
+      C=$'\033[36m'; G=$'\033[32m'; Y=$'\033[33m'; D=$'\033[2m'; B=$'\033[1m'; R=$'\033[0m'
+    else C=""; G=""; Y=""; D=""; B=""; R=""; fi
+    trap 'printf "\033[?25h"; exit 0' INT TERM   # restore cursor on Ctrl-C
+    printf '\033[?25l'                           # hide cursor (less flicker)
+    while true; do
+      pods="$(kubectl get pods -l serving.knative.dev/service=hello --no-headers 2>/dev/null)"
+      # "alive" = anything not Terminating/Completed (Running, Pending, ContainerCreating…)
+      alive="$(printf '%s\n' "$pods" | awk 'NF && $3!="Terminating" && $3!="Completed"')"
+      # count with awk (always exits 0; grep -c returns 1 on zero matches)
+      n="$(printf '%s\n' "$alive" | awk 'NF{c++} END{print c+0}')"
+      term="$(printf '%s\n' "$pods" | awk 'NF && ($3=="Terminating"||$3=="Completed"){c++} END{print c+0}')"
+      bar="$(printf '%*s' "$n" '' | tr ' ' '#')"
+      printf '\033[H\033[2J'                      # home + clear
+      printf '%s%s hello · live replicas %s\n\n' "$B" "$C" "$R"
+      if [ "$n" -ge 1 ]; then col="$G"; else col="$Y"; fi
+      printf '   %sREPLICAS: %d%s  %s%s%s   %s(max-scale 5)%s\n\n' "$B$col" "$n" "$R" "$col" "$bar" "$R" "$D" "$R"
+      if [ -n "$alive" ]; then
+        { printf 'POD\tREADY\tSTATUS\tAGE\n'
+          printf '%s\n' "$alive" | awk '{print $1"\t"$2"\t"$3"\t"$5}'; } | column -t -s "$(printf '\t')"
+      else
+        printf '   %s(scaled to zero — nothing running, nothing costing money)%s\n' "$D" "$R"
+      fi
+      if [ "${term:-0}" -gt 0 ]; then
+        printf '\n   %s+%d draining (Terminating/Completed)%s\n' "$D" "$term" "$R"
+      fi
+      sleep 1
+    done
     ;;
 
   cold)

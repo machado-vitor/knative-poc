@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -65,6 +66,18 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			ce["type"], ce["source"], ce["id"], string(body))
 		w.WriteHeader(http.StatusNoContent)
 		return
+	}
+
+	// Optional artificial latency: GET /?sleep=<ms>. Holding the connection open
+	// builds real concurrency, which is what Knative's autoscaler reacts to — handy
+	// for demoing scale-up (mirrors Knative's own autoscale-go sample).
+	if d := r.URL.Query().Get("sleep"); d != "" {
+		if ms, err := strconv.Atoi(d); err == nil && ms > 0 {
+			if ms > 10000 {
+				ms = 10000 // cap at 10s so a stray value can't wedge a pod
+			}
+			time.Sleep(time.Duration(ms) * time.Millisecond)
+		}
 	}
 
 	uptime := time.Since(startedAt).Round(time.Millisecond)

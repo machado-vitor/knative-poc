@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHandle_PlainHTTP_ReturnsGreeting(t *testing.T) {
@@ -42,6 +43,40 @@ func TestHandle_CloudEvent_Returns204AndEmptyBody(t *testing.T) {
 	}
 	if body, _ := io.ReadAll(rr.Body); len(body) != 0 {
 		t.Errorf("body = %q, want empty for CloudEvent response", string(body))
+	}
+}
+
+func TestHandle_SleepParam_AddsLatencyAndStillGreets(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/?sleep=120", nil)
+	rr := httptest.NewRecorder()
+
+	start := time.Now()
+	handle(rr, req)
+	elapsed := time.Since(start)
+
+	if elapsed < 100*time.Millisecond {
+		t.Errorf("elapsed = %s, want >= ~120ms (sleep param ignored?)", elapsed)
+	}
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	if body, _ := io.ReadAll(rr.Body); !strings.HasPrefix(string(body), "hello from ") {
+		t.Errorf("body = %q, want greeting", string(body))
+	}
+}
+
+func TestHandle_InvalidSleepParam_DoesNotBlock(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/?sleep=abc", nil)
+	rr := httptest.NewRecorder()
+
+	start := time.Now()
+	handle(rr, req)
+
+	if elapsed := time.Since(start); elapsed > 50*time.Millisecond {
+		t.Errorf("elapsed = %s, want fast for a non-numeric sleep value", elapsed)
+	}
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 }
 

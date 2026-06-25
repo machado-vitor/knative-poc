@@ -68,6 +68,36 @@ load:
 send-event:
 	./scripts/demo.sh send-event
 
+## demo: Launch the live-demo segment in a 4-pane tmux session (scripts/run-demo.sh).
+.PHONY: demo
+demo:
+	./scripts/run-demo.sh
+
+## demo-kill: Tear down the demo tmux session.
+.PHONY: demo-kill
+demo-kill:
+	./scripts/run-demo.sh kill
+
+## present: Open the FULL presenter setup — full-screen slides + teleprompter (controls everything).
+.PHONY: present
+present:
+	./scripts/present.sh --launch
+
+## slides-screen: Open just the full-screen AUDIENCE slide window (follows the teleprompter).
+.PHONY: slides-screen
+slides-screen:
+	./scripts/present.sh --screen
+
+## slides: Build the 16:10 slides directly as images (Chrome) + the HTML deck.
+.PHONY: slides
+slides:
+	python3 scripts/make_slides.py
+
+## deck: Build + open the slides as an HTML deck in Chrome (← → navigate · f fullscreen).
+.PHONY: deck
+deck:
+	python3 scripts/make_slides.py html && open -a "Google Chrome" slides.html
+
 ## teardown: Delete the kind cluster (scripts/teardown.sh).
 .PHONY: teardown
 teardown:

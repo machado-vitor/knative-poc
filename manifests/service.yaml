@@ -7,14 +7,19 @@ spec:
   template:
     metadata:
       annotations:
-        # Demo-friendly autoscaling: scale to zero quickly, scale up at low load.
+        # Demo-friendly autoscaling: scale up at low load, and scale ALL the way
+        # back to zero fast enough that the whole up→down cycle is visible inside
+        # the ~45s live-demo block.
         autoscaling.knative.dev/min-scale: "0"
         autoscaling.knative.dev/max-scale: "5"
         autoscaling.knative.dev/target: "10"             # 10 concurrent requests per pod
-        autoscaling.knative.dev/scale-down-delay: "30s"  # short delay so scale-to-zero is visible during the talk
+        autoscaling.knative.dev/window: "6s"             # short averaging window → reacts fast (min 6s)
+        autoscaling.knative.dev/scale-down-delay: "0s"   # apply scale-down immediately, no delay
     spec:
       containerConcurrency: 50
-      timeoutSeconds: 30
+      # Knative sets the pod's terminationGracePeriodSeconds from this, so a short
+      # timeout means Terminating pods disappear quickly (app drains in <1s anyway).
+      timeoutSeconds: 8
       containers:
         - image: dev.local/knative-poc-hello:dev
           imagePullPolicy: IfNotPresent
