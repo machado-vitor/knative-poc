@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 PDF="${PDF:-$PROJECT_DIR/knative-presentation.pdf}"
 SLIDES_DIR="${SLIDES_DIR:-$PROJECT_DIR/.slides}"
-IMG_WIDTH="${IMG_WIDTH:-48%}"          # how wide to draw the slide in the teleprompter
+IMG_WIDTH="${IMG_WIDTH:-34%}"          # inline slide size on the teleprompter (small — the script is what you read)
 SCREEN_FLAGS="${SCREEN_FLAGS:---width 100% -r}"   # how the audience screen fills (imgcat)
 
 # The teleprompter is the single control surface. It drives:
@@ -192,8 +192,10 @@ fire_block() {
 
 # ── teleprompter primitives ──────────────────────────────────────────────────
 say()  { printf "%s\n" "$*"; }
-line() { printf "%s\n" "${MAG}❝ $* ❞${RST}"; }          # a line to say out loud
-note() { printf "%s\n" "${DIM}   $*${RST}"; }            # stage direction
+# a line to READ ALOUD — bold, with a blank line before each so beats are easy to
+# track while reading verbatim off the teleprompter.
+line() { printf "\n  %s%s%s\n" "$BOLD" "$*" "$RST"; }
+note() { printf "%s%s %s%s\n" "$DIM" "·" "$*" "$RST"; }  # stage direction (not read aloud)
 cue()  { printf "\n%s%s  ▶▶ %s  %s\n" "$BOLD" "$INV" "$*" "$RST"; }   # demo banner
 
 header() { # $1=card idx  $2=slide  $3=time  $4=title
@@ -230,29 +232,45 @@ render_card() { # $1 = card index (1..TOTAL)
   show_slide "$slide"     # presenter's inline reference
   audience "$aud"         # projector: this slide, or flip to the live demo
 
+  # The lines below are written to be READ ALOUD VERBATIM — short beats, one idea
+  # per line, natural spoken rhythm. note()=stage direction, cue()=demo banner;
+  # neither is read out.
   case "$1" in
   1)
     header 1 1 "0:00" "Title"
     note "Let the title sit for a beat, then:"
-    line "Serverless on Kubernetes — Knative. A scale-to-zero HTTP service and event-driven workloads, as a live PoC on a local kind cluster."
+    line "Serverless on Kubernetes — Knative."
+    line "A scale-to-zero HTTP service, and event-driven workloads."
+    line "A live proof-of-concept, on a local kind cluster."
     ;;
   2)
     header 2 2 "0:00–0:35" "What is Knative?"
-    line "Knative is an open-source add-on that turns any Kubernetes cluster into a serverless platform. It has two parts."
-    line "Serving gives request-driven autoscaling — including scale-to-zero — for HTTP workloads. Eventing gives a pub/sub layer — brokers, triggers and sources — all speaking the CloudEvents standard."
-    line "It started at Google, it's now a graduated CNCF project, and it runs your normal containers — no proprietary runtime. Let me show you both, live."
+    line "Knative is an open-source add-on that turns any Kubernetes cluster into a serverless platform."
+    line "It has two parts."
+    line "Serving gives you request-driven autoscaling — including scale-to-zero — for HTTP workloads. One YAML replaces your Deployment, Service, Ingress, and autoscaler."
+    line "Eventing gives you a pub/sub layer — brokers, triggers, and sources — all speaking CloudEvents. For loosely-coupled, event-driven apps."
+    line "It started at Google, and it's now a graduated CNCF project."
+    line "And it runs your normal containers — no proprietary runtime, no lock-in."
+    line "Let me show you both, live."
     ;;
   3)
     header 3 3 "0:35–1:05" "Serving — one object, zero idle cost"
     note "Point at the YAML on the right."
-    line "With Serving you apply one object — a Knative Service. From this single YAML, Knative creates the Deployment, the pod, the Kubernetes Service, the ingress route and the autoscaler."
-    line "The key annotations: min-scale 0 means scale to zero when idle; max-scale 5; target 10 — it autoscales on concurrent requests per pod, not CPU. No traffic means no pods, which means no cost. The trade-off: the first request after idle pays a cold start."
+    line "With Serving, you apply one object: a Knative Service."
+    line "From this single YAML, Knative creates the Deployment, the pod, the Kubernetes Service, the ingress route, and the autoscaler."
+    line "The key annotations are here. Min-scale zero — it scales to zero when idle. Max-scale five. And target ten."
+    line "The autoscaler — the KPA — scales on concurrent requests per pod, not CPU. From zero, up to N, and back to zero."
+    line "No traffic means no pods. No pods means no cost."
+    line "The trade-off: the first request after idle pays a cold start."
+    line "And every deploy is an immutable Revision — so you get instant rollback, and traffic splitting."
     ;;
   4)
     header 4 5 "1:05–1:25" "The PoC we'll run"
-    line "Here's what we'll run: one tiny Go HTTP server. It replies 'hello from pod', and it logs any CloudEvent it receives — the same binary serves both roles."
-    line "It runs on a local kind cluster, and it handles SIGTERM for a graceful drain when it scales down."
-    line "We'll see it in two parts — first Serving: a cold start and autoscaling. Then Eventing: a CloudEvent reaching the same service. Watch for the punchline — same workload, zero code changes."
+    line "Here's what we'll run: one tiny Go HTTP server."
+    line "It replies 'hello from pod', and it logs any CloudEvent it receives. The same binary serves both roles."
+    line "It runs on a local kind cluster — a couple of scripts install Knative and deploy it. And it handles SIGTERM, for a graceful drain when it scales down."
+    line "We'll see it in two parts. First, Serving — a cold start, and autoscaling. Then, Eventing — a CloudEvent reaching the same service."
+    line "Watch for the punchline: same workload, zero code changes."
     ;;
   5)
     header 5 3 "1:25–2:10" "Live demo · Part 1 — cold start + autoscale"
@@ -262,14 +280,21 @@ render_card() { # $1 = card index (1..TOTAL)
     else
       cue "DEMO Part 1 — run  ./scripts/run-demo.sh serving ; [d] flips the projector to it:"
     fi
-    line "Part one, Serving. I send one request — with zero replicas Knative boots a pod first; that's the cold start. The request waits, then is served. The second is instant."
-    line "Now a burst of concurrent requests. Concurrency builds and Knative adds pods up to max-scale 5 — no HPA, no manual scaling."
-    line "That's min-scale 0, max-scale 5 and target 10 doing their job. It scaled up under load, and once idle it falls straight back to zero."
+    line "Part one — Serving."
+    line "I send one request. With zero replicas, Knative has to boot a pod first. That's the cold start — the request waits, then it's served."
+    line "The second request is instant."
+    line "Now, a burst of concurrent requests. Concurrency builds, and Knative adds pods — up to max-scale five. No HPA, no manual scaling."
+    line "That's min-scale zero, max-scale five, and target ten, doing their job."
+    line "It scaled up under load. And now it's idle — watch it fall straight back to zero."
     ;;
   6)
     header 6 4 "2:10–2:40" "Eventing — pub/sub with CloudEvents"
-    line "On to part two: Eventing. The Broker is a pub/sub hub. The PingSource emits a CloudEvent on a cron schedule. The Trigger is a subscription with a filter: send events of type ping to the hello service."
-    line "This is loose coupling — the source has no idea who consumes its events. You can add or remove subscribers without touching the producer."
+    line "On to part two — Eventing."
+    line "A Source produces events — from timers, Kafka, GitHub, S3, you name it. Here, a PingSource fires on a cron schedule."
+    line "The Broker is the central hub — it receives the events, and buffers them."
+    line "A Trigger is a subscription with a filter: route events of type 'ping' to the hello service."
+    line "That's loose coupling. The source has no idea who consumes its events."
+    line "And any HTTP service is automatically an event sink — so you add or remove subscribers without ever touching the producer."
     ;;
   7)
     header 7 4 "2:40–3:10" "Live demo · Part 2 — a CloudEvent arrives"
@@ -279,24 +304,41 @@ render_card() { # $1 = card index (1..TOTAL)
     else
       cue "DEMO Part 2 — run  ./scripts/run-demo.sh events ; [d] flips the projector to it:"
     fi
-    line "Part two. I post one CloudEvent to the broker. There it is in the logs — CloudEvent received, type dev.knative.sources.ping. And in the pod watch, a pod spun up just to handle it, then scales back down."
-    line "And there's the punchline: the exact same scale-to-zero workload is now also an event consumer — zero code changes. One Go binary; it just inspects the CloudEvent headers."
+    line "Part two."
+    line "I post one CloudEvent to the broker."
+    line "And there it is, in the logs — CloudEvent received, type dev.knative.sources.ping."
+    line "In the pod watch, a pod spun up just to handle it — then scaled back down."
+    line "And there's the punchline: the exact same scale-to-zero workload is now also an event consumer. Zero code changes."
+    line "It's one Go binary. It just inspects the CloudEvent headers."
     ;;
   8)
     header 8 6 "3:10–3:25" "Trade-offs — Pros & Cons"
-    line "Quick trade-offs. You get scale-to-zero, far less boilerplate — one YAML versus four or five K8s objects — no cloud lock-in, and built-in revisions and traffic splitting."
-    line "The costs: cold starts on the first request after idle, and you still operate Kubernetes plus an extra control plane — it's not zero-ops like Lambda."
+    line "Quick trade-offs. First, the pros."
+    line "Scale-to-zero — you pay nothing when idle. Far less boilerplate — one YAML, instead of four or five objects."
+    line "No lock-in — plain containers, on any Kubernetes. CloudEvents-native eventing, with pluggable sources."
+    line "And built-in revisions, rollbacks, and traffic splitting."
+    line "Now, the cons."
+    line "Cold starts — the first request after idle has latency. And you still run Kubernetes — so it's not zero-ops, like a managed FaaS."
+    line "There's operational complexity — an extra control plane, and networking layer."
+    line "It's really for HTTP and event-driven work — not long-lived or batch jobs. And there's a learning curve, on top of Kubernetes."
     ;;
   9)
     header 9 7 "3:25–3:40" "Landscape — how it compares"
-    line "Compared to alternatives: plain Kubernetes with HPA never scales to zero; KEDA does event-based scaling but not HTTP serving; Lambda gives you FaaS but locks you to AWS."
-    line "Knative is the open standard — in fact Google Cloud Run implements the Knative Serving API, so you can write once and run it managed or self-hosted."
+    line "How does it compare?"
+    line "Plain Kubernetes with HPA never scales to zero."
+    line "KEDA does event-based scaling — but not HTTP serving."
+    line "Lambda gives you FaaS — but it locks you to AWS."
+    line "And OpenFaaS keeps things function-first, and simple."
+    line "Knative is the open standard. In fact, Google Cloud Run implements the Knative Serving API — so you write once, and run it managed or self-hosted."
     ;;
   10)
     header 10 8 "3:40–4:00" "Wrap-up"
-    line "Two takeaways. One: Knative reduces an HTTP service to a single YAML, with scale-to-zero out of the box."
-    line "Two: the Eventing primitives — Broker, Trigger, Source — are simple, composable and CloudEvents-native, so any HTTP service is automatically an event sink. Portable serverless, without the lock-in."
-    line "Thank you — happy to take questions."
+    line "Two takeaways."
+    line "One: Serving reduces an HTTP service to a single YAML — with scale-to-zero, out of the box."
+    line "Two: Eventing gives you simple, composable, CloudEvents-native pub/sub — so any HTTP service becomes an event sink."
+    line "Portable serverless — the productivity of Lambda or Cloud Run, without the cloud lock-in."
+    line "The trade is cold-start latency, and some ops overhead — for real cost savings, and developer velocity."
+    line "Thank you. Happy to take questions."
     ;;
   esac
 }
