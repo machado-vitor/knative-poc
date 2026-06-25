@@ -58,7 +58,7 @@ pre .p{color:#e3b341}      /* numbers */
 
 /* two components / pros-cons cards */
 .cards{display:flex;gap:40px;margin-top:48px;flex:1}
-.card{flex:1;background:#11181f;border:1px solid #21303a;border-radius:20px;padding:40px 44px;display:flex;flex-direction:column}
+.card{flex:1;background:#11181f;border:1px solid #21303a;border-radius:20px;padding:40px 44px;display:flex;flex-direction:column;justify-content:center}
 .card h3{font-size:36px;margin-bottom:8px;display:flex;align-items:center;gap:16px}
 .card h3 .num{display:inline-flex;width:52px;height:52px;border-radius:50%;background:#16323a;color:#2dd4bf;
    align-items:center;justify-content:center;font-size:30px;font-weight:800;border:2px solid #2dd4bf}
@@ -68,7 +68,7 @@ pre .p{color:#e3b341}      /* numbers */
 .pc{font-size:33px;line-height:1.3;padding-left:52px;position:relative;margin-bottom:22px;color:#d6dee7}
 .pc.pro::before{content:"✓";position:absolute;left:0;color:#46c167;font-weight:800}
 .pc.con::before{content:"✕";position:absolute;left:0;color:#e5688b;font-weight:800}
-.card.pros{border-color:#23423a}.card.cons{border-color:#43232f}
+.card.pros{border-color:#23423a;justify-content:flex-start}.card.cons{border-color:#43232f;justify-content:flex-start}
 .card .ttl{font-size:30px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;margin-bottom:30px}
 .card.pros .ttl{color:#46c167}.card.cons .ttl{color:#e5688b}
 
@@ -142,14 +142,13 @@ def s1():
     <div class="eyebrow">Serverless on Kubernetes</div>
     <h1>Knative</h1>
     <div class="lead">Scale-to-zero HTTP services &amp; event-driven workloads —<br>a live PoC on a local <span class="teal">kind</span> cluster.</div>
-    <div class="tag">5-minute walkthrough + live demo</div>
     """
     return shell(body, klass="title")
 
 def s2():
     body = """
     <div class="eyebrow">The Idea</div>
-    <h1>What is Knative?<span class="sub">An open-source Kubernetes add-on (CNCF) that brings a serverless developer experience to any cluster — running your normal containers, no proprietary runtime, no lock-in.</span></h1>
+    <h1>What is Knative?<span class="sub">An open-source Kubernetes add-on — from Google, now a graduated CNCF project — that brings a serverless developer experience to any cluster. Runs your normal containers: no proprietary runtime, no lock-in.</span></h1>
     <div class="cards">
       <div class="card"><h3><span class="num">1</span> Serving</h3>
         <p>Request-driven autoscaling, including <b>scale-to-zero</b>, for HTTP workloads. One YAML replaces Deployment + Service + Ingress + HPA.</p></div>
@@ -225,7 +224,7 @@ def s5():
       <div class="col"><pre><span class="c"># 1 · Serving: cold start → autoscale</span>
 demo.sh <span class="k">cold</span>   <span class="c"># wakes a pod 0→1</span>
 demo.sh <span class="k">load</span>   <span class="c"># 30s traffic → 2–5 pods</span>
-<span class="c">#   …idle 30s → back to 0</span>
+<span class="c">#   …idle ~10s → back to 0</span>
 
 <span class="c"># 2 · Eventing: fire an event</span>
 demo.sh <span class="k">send-event</span>
@@ -265,7 +264,7 @@ def s7():
         ("Plain K8s + HPA", ("No (min 1 pod)","no"), "Any Kubernetes", ("None","yes"), "Steady-state services", False),
         ("KEDA", ("Yes (event-based)","yes"), "Any Kubernetes", ("None","yes"), "Event/queue-driven autoscaling", False),
         ("AWS Lambda", ("Yes","yes"), "AWS only", ("High","no"), "Pure FaaS, no cluster to run", False),
-        ("Google Cloud Run", ("Yes","yes"), "GCP (Knative API!)", ("Medium","mid"), "Managed Knative, no ops", False),
+        ("Google Cloud Run", ("Yes","yes"), "GCP (Knative API)", ("Medium","mid"), "Managed serverless, Knative API", False),
         ("OpenFaaS", ("Yes","yes"), "Any Kubernetes", ("Low","mid"), "Function-first simplicity", False),
     ]
     trs = ""
@@ -280,7 +279,7 @@ def s7():
       <tr><th>Technology</th><th>Scale-to-zero</th><th>Runs on</th><th>Lock-in</th><th>Best for</th></tr>
       {trs}
     </table>
-    <div class="note"><b>Knative = the open standard.</b> Google Cloud Run is literally Google's hosted Knative API — write once, run managed or self-hosted.</div>
+    <div class="note"><b>Knative = the open standard.</b> Google Cloud Run implements the Knative Serving API — write once, run it managed or self-hosted.</div>
     """
     return shell(body, page=7)
 
@@ -289,7 +288,7 @@ def s8():
     <div class="eyebrow">Takeaways</div>
     <h1>Wrap-up<span class="sub">Thank you — questions?</span></h1>
     <div class="rule"></div>
-    <div class="body"><div class="col"><ul>
+    <div class="body"><div class="col" style="justify-content:center"><ul>
       <li><b>Serving</b> shrinks an HTTP service's deployment surface to a single YAML, with scale-to-zero for free.</li>
       <li><b>Eventing</b> gives simple, composable, CloudEvents-native pub/sub — any HTTP service becomes an event sink.</li>
       <li><b>Portable serverless:</b> the productivity of Lambda/Cloud Run without the cloud lock-in.</li>
